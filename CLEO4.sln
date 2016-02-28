@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CLEO", "CLEO4.vcxproj", "{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GTASA", "..\GTASA\GTASA.vcxproj", "{32FCF424-D919-4F50-A4FC-177CF89B4A6D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		CRTDebug|Win32 = CRTDebug|Win32
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}.CRTDebug|Win32.ActiveCfg = CRTDebug|Win32
+		{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}.CRTDebug|Win32.Build.0 = CRTDebug|Win32
+		{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}.Debug|Win32.Build.0 = Debug|Win32
+		{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}.Release|Win32.ActiveCfg = Release|Win32
+		{8091E84C-E97A-4BC0-AC4C-9FFF6B8EB6D7}.Release|Win32.Build.0 = Release|Win32
+		{32FCF424-D919-4F50-A4FC-177CF89B4A6D}.CRTDebug|Win32.ActiveCfg = Debug|Win32
+		{32FCF424-D919-4F50-A4FC-177CF89B4A6D}.CRTDebug|Win32.Build.0 = Debug|Win32
+		{32FCF424-D919-4F50-A4FC-177CF89B4A6D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{32FCF424-D919-4F50-A4FC-177CF89B4A6D}.Debug|Win32.Build.0 = Debug|Win32
+		{32FCF424-D919-4F50-A4FC-177CF89B4A6D}.Release|Win32.ActiveCfg = Release|Win32
+		{32FCF424-D919-4F50-A4FC-177CF89B4A6D}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

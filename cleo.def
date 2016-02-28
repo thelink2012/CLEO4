@@ -1,0 +1,21 @@
+LIBRARY
+
+EXPORTS 
+	_CLEO_GetFloatOpcodeParam@4				@1
+	_CLEO_GetGameVersion@0					@2
+	_CLEO_GetIntOpcodeParam@4				@3
+	_CLEO_GetOperandType@4					@4
+	_CLEO_GetVersion@0						@5
+	_CLEO_ReadStringOpcodeParam@12			@6
+	_CLEO_RecordOpcodeParams@8				@7
+	_CLEO_RegisterOpcode@8					@8
+	_CLEO_RetrieveOpcodeParams@8			@9
+	_CLEO_SetFloatOpcodeParam@8				@10
+	_CLEO_SetIntOpcodeParam@8				@11
+	_CLEO_SetThreadCondResult@8				@12
+	_CLEO_SkipOpcodeParams@8				@13
+	_CLEO_ThreadJumpAtLabelPtr@8			@14
+	_CLEO_WriteStringOpcodeParam@8			@15
+	missionLocals							@16
+	opcodeParams							@17
+	staticThreads							@18
