@@ -26,6 +26,7 @@ namespace CLEO
 	public:
 		CTextManager();
 		~CTextManager();
+        const char* Get(const char* key);
 		bool AddFxt(const char *key, const char *value, bool dynamic = true);
 		bool RemoveFxt(const char *key);
 		// find fxt text by its key

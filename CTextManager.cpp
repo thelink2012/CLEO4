@@ -18,6 +18,7 @@ namespace CLEO
 	void (__cdecl * _PrintBig)(const char *, unsigned time, unsigned style);
 	void (__cdecl * _Print) (const char *, unsigned time, bool flag1, bool flag2);
 	void (__cdecl * _PrintNow) (const char *, unsigned time, bool flag1, bool flag2);
+    const char* (__fastcall * CText__Get)(CText*, int dummy, const char*);
 	DWORD _CText__TKey__locate;
 
 	char message_buf[0x80];
@@ -127,6 +128,11 @@ namespace CLEO
 		_chdir(cwd);
 	}
 
+    const char* CTextManager::Get(const char* key)
+    {
+        return CText__Get(gameTexts, 0, key);
+    }
+
 	bool CTextManager::AddFxt(const char *key, const char *value, bool dynamic)
 	{
 		// TODO: replace this part with in-place construction of FxtEntry,
@@ -214,7 +220,8 @@ namespace CLEO
 		gameTexts				= gvm.TranslateMemoryAddress(MA_GAME_TEXTS);
 		cheatString				= gvm.TranslateMemoryAddress(MA_CHEAT_STRING);
 		mpackNumber				= gvm.TranslateMemoryAddress(MA_MPACK_NUMBER);
-		inj.InjectFunction(CText__locate, gvm.TranslateMemoryAddress(MA_CALL_CTEXT_LOCATE));
+        CText__Get              = gvm.TranslateMemoryAddress(MA_CALL_CTEXT_LOCATE);
+		inj.InjectFunction(CText__locate, CText__Get);
 	}
 
 	CTextManager::FxtEntry::FxtEntry(const char *_text, bool _static) : text(_text), is_static(_static)

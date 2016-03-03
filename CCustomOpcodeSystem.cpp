@@ -2174,9 +2174,9 @@ loop_end_0AA8:
 	{
 		const char *gxt = readString(thread);
 		if(*thread->GetBytePointer() >= 1 && *thread->GetBytePointer() <= 8)
-			*thread << CText__locate(gameTexts, 0, gxt);
+			*thread << GetInstance().TextManager.Get(gxt);
 		else
-			strcpy((char *)GetScriptParamPointer(thread), CText__locate(gameTexts, 0, gxt));
+			strcpy((char *)GetScriptParamPointer(thread), GetInstance().TextManager.Get(gxt));
 		return OR_CONTINUE;
 	}
 
