@@ -19,3 +19,4 @@ EXPORTS
 	missionLocals							@16
 	opcodeParams							@17
 	staticThreads							@18
+	_CLEO_GetPointerToScriptVariable@4		@19
