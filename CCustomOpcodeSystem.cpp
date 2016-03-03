@@ -811,12 +811,13 @@ namespace CLEO
 		prevScmFunctionId(reinterpret_cast<CCustomScript*>(thread)->GetScmFunction()), retnAddress(thread->GetBytePointer())
 		{
 			auto cs = reinterpret_cast<CCustomScript*>(thread);
-			std::copy(cs->LocalVar, cs->LocalVar + 32, savedTls);
+            auto locals = cs->IsMission()? missionLocals : cs->LocalVar;
+			std::copy(locals, locals + 32, savedTls);
 			SCRIPT_VAR fill_val; fill_val.dwParam = 0;
 
 			// CLEO 3 didnt initialise local storage, so dont do it if we're processing a CLEO 3 script in case the storage is used
 			if(cs->IsCustom() && cs->GetCompatibility() >= CLEO_VER_4_MIN)
-				std::fill(cs->LocalVar, cs->LocalVar + 32, fill_val);	// fill with zeros
+				std::fill(locals, locals + 32, fill_val);	// fill with zeros
 
 			cs->SetScmFunction(thisScmFunctionId = allocationPlace);
 		}
@@ -824,7 +825,7 @@ namespace CLEO
 		void Return(CRunningScript *thread)
 		{
 			auto cs = reinterpret_cast<CCustomScript*>(thread);
-			std::copy(savedTls, savedTls + 32, cs->LocalVar);
+			std::copy(savedTls, savedTls + 32, cs->IsMission()? missionLocals : cs->LocalVar);
 			cs->SetIp(retnAddress);
 			cs->SetScmFunction(prevScmFunctionId);
 		}
