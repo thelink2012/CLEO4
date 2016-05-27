@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "cleo.h"
 
+extern "C" bool DYNAREC_LoadScript(CRunningScript* script, const uint8_t* bytecode, size_t size);
+extern "C" bool DYNAREC_FreeScript(CRunningScript* script);
+
 namespace CLEO 
 {
 	DWORD FUNC_AddScriptToQueue;
@@ -787,7 +790,9 @@ namespace CLEO
 			}
 		}
 
+        
 		AddCustomScript(cs);
+        DYNAREC_LoadScript(cs, static_cast<const uint8_t*>(cs->BaseIP), cs->script_length);
 		return cs;
 	}
 
@@ -980,6 +985,7 @@ namespace CLEO
 		UseTextCommands = 0;
 		NumDraws = 0;
 		NumTexts = 0;
+        script_length = 0;
 		
 		TRACE("Loading custom script %s...", szFileName);
 
@@ -1009,6 +1015,7 @@ namespace CLEO
 			Name[7] = '\0';
 			dwChecksum = crc32(reinterpret_cast<BYTE *>(BaseIP), length);
 			bOK = true;
+            this->script_length = length;
 		}
 		catch (std::exception& e)
 		{
@@ -1022,6 +1029,7 @@ namespace CLEO
 
 	CCustomScript::~CCustomScript()
 	{
+        DYNAREC_FreeScript(this);
 		if (BaseIP && !bIsMission) delete[] BaseIP;
 	}
 }

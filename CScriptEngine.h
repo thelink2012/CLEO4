@@ -27,6 +27,7 @@ namespace CLEO
 		std::list<RwTexture*> script_textures;
 		std::vector<BYTE> script_draws;
 		std::vector<BYTE> script_texts;
+        size_t script_length;
 
 	public:
 		inline SCRIPT_VAR * GetVarsPtr()					{return LocalVar;}

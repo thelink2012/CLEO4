@@ -5,6 +5,184 @@
 #include "CCustomOpcodeSystem.h"
 #include "CTextManager.h"
 
+extern "C" bool DYNAREC_ProcessScript(CRunningScript* script);
+
+#include <map>
+#include <chrono>
+
+class CScriptTimer
+{
+private:
+public:
+    using Clock     = std::chrono::high_resolution_clock;
+    using Duration  = Clock::duration;
+    using TimePoint = Clock::time_point;
+
+    std::vector<Duration>                        op_timing;
+    std::map<std::string, Duration, std::less<>> sc_timing;
+
+    CScriptTimer()
+    {
+        op_timing.resize(0x0FFF);
+        MemWrite<uint8_t>(0x561A3D+0, 0xEB);
+        MemWrite<uint8_t>(0x561A3D+1, 0x07);
+        MemJump(0x561A46, OnTimerResume);
+        MemJump(0x5619FA, OnTimerSuspend);
+        MemCall(0x561C58, OnTimerUpdate);
+        MemCall(0x53C93F, OnShutdown);
+        //MessageBoxA(0, "VAI CAGAR", "FILHO DA PUTA", 0);
+    }
+
+    static void OnShutdown()
+    {
+        Instance().create_benchmark();
+        ((void(*)())(0x5DABA0))();
+    }
+
+    void create_benchmark()
+    {
+        char bufx[MAX_PATH];
+        GetCurrentDirectoryA(MAX_PATH, bufx);
+        MessageBoxA(0, bufx, "LULA", 0);
+
+        auto f = fopen("benchmark.txt", "w");
+        fprintf(f, "Opcodes Timing D\n");
+        fprintf(f, "======================================\n");
+        fprintf(f, "\n");
+        
+        std::vector<std::pair<uint16_t, Duration>> op_timing_sorted;
+        for(size_t i = 0; i < op_timing.size(); ++i)
+        {
+            if(op_timing[i] != Duration::zero())
+            {
+                op_timing_sorted.emplace_back(i, op_timing[i]);
+            }
+        }
+        std::sort(op_timing_sorted.begin(), op_timing_sorted.end(),
+            [](const auto& p1, const auto& p2) {
+            return p1.second < p2.second;
+        });
+
+        for(auto it = op_timing_sorted.rbegin(); it != op_timing_sorted.rend(); ++it)
+        {
+            fprintf(f, "%-16.4X %llu ns (%d%%)\n", it->first, it->second.count(), percent_from_game(it->second));
+        }
+
+        fprintf(f, "\n\nScript Timing\n");
+        fprintf(f, "======================================\n");
+        
+        std::vector<std::pair<std::string, Duration>> sc_timing_sorted;
+        for(auto& pair : sc_timing)
+        {
+            sc_timing_sorted.emplace_back(pair.first, pair.second);
+        }
+        std::sort(sc_timing_sorted.begin(), sc_timing_sorted.end(),
+            [](const auto& p1, const auto& p2) {
+            return p1.second < p2.second;
+        });
+
+        for(auto it = sc_timing_sorted.rbegin(); it != sc_timing_sorted.rend(); ++it)
+        {
+            fprintf(f, "%-16.8s %llu ns (%d%%)\n", it->first.c_str(), it->second.count(), percent_from_game(it->second));
+        }
+
+        fclose(f);
+    }
+
+    void start_script(CRunningScript* script)
+    {
+        sc_duration = Duration::zero();
+        current_script = script;
+    }
+
+    void add_time(CRunningScript* script, uint16_t opcode, Duration time)
+    {
+        //opcode &= 0x7FFF;
+        op_timing[opcode] += time;
+        sc_duration += time;
+    }
+
+    void end_script(CRunningScript* script)
+    {
+        if(current_script != script) *(int*)0 = 0;
+        sc_timing[current_script->GetName()] += sc_duration;
+        current_script = nullptr;
+    }
+
+
+    CRunningScript* current_script = nullptr;
+    Duration sc_duration;
+    bool      is_timing  = false;
+    bool      is_suspend = false; 
+    TimePoint start_point;
+    TimePoint suspend_point;
+    Duration  time_suspended;
+    Duration  total_frames_time;
+
+    void start_timer()
+    {
+        this->is_timing = true;
+        if(this->is_suspend) *(int*)0 = 0;
+
+        time_suspended = Duration::zero();
+        start_point = Clock::now();
+    }
+
+    Duration stop_timer()
+    {
+        auto result = (Clock::now() - this->start_point) - this->time_suspended;
+        this->is_timing = false;
+        if(this->is_suspend) *(int*)0 = 0;
+        return result;
+    }
+
+    int percent_from_game(Duration time)
+    {
+        return int((time.count() * 100) / this->total_frames_time.count());
+    }
+
+
+    static CScriptTimer& Instance()
+    {
+        static CScriptTimer singleton;
+        return singleton;
+    }
+
+    static void OnTimerSuspend()
+    {
+        if(Instance().is_timing)
+        {
+            if(Instance().is_suspend) *(int*)0 = 0;
+            Instance().is_suspend = true;
+            Instance().suspend_point = Clock::now();
+        }
+    }
+
+    static void OnTimerResume()
+    {
+        if(Instance().is_timing)
+        {
+            if(!Instance().is_suspend) *(int*)0 = 0;
+            Instance().is_suspend = false;
+            Instance().time_suspended += (Clock::now() - Instance().suspend_point);
+        }
+    }
+
+    static void OnTimerUpdate(float x)
+    {
+        static TimePoint last_update = Clock::now();
+
+        if(x != 0.0f)
+        {
+            Instance().total_frames_time += (Clock::now() - last_update);
+        }
+
+        last_update = Clock::now();
+        ((void(*)(float))0x5618D0)(x);
+    }
+};
+
+
 namespace CLEO
 {
 	DWORD FUNC_fopen;
@@ -207,7 +385,15 @@ namespace CLEO
 		_asm mov thread, esi
 		
 		last_script = thread;
-		
+
+        /*
+        if(DYNAREC_ProcessScript(thread))
+        {
+            return 0;
+        }
+        */
+
+        CScriptTimer::Instance().start_script(thread);
 		try
 		{
 			do
@@ -219,7 +405,9 @@ namespace CLEO
 				memcpy(last_thread, thread->GetName(), 8);
 				thread->SetNotFlag((opcode & 0x8000) != 0);
 				opcode &= 0x7FFF;
+                CScriptTimer::Instance().start_timer();
 				res = newOpcodeHandlerTable[opcode / 100](thread, opcode);
+                CScriptTimer::Instance().add_time(thread, opcode, CScriptTimer::Instance().stop_timer());
 			}
 			while (res == OR_CONTINUE);
 		}
@@ -229,6 +417,7 @@ namespace CLEO
 			sprintf(str, "%s encountered while parsing opcode '%04X' in script '%s'", e, last_opcode, last_thread);
 			Error(str);
 		}
+        CScriptTimer::Instance().end_script(thread);
 		return 0;
 	}
 
@@ -280,13 +469,15 @@ namespace CLEO
 		Models				= gvm.TranslateMemoryAddress(MA_MODELS);
 		SpawnCar				= gvm.TranslateMemoryAddress(MA_SPAWN_CAR_FUNCTION);
 
-		/*if(gvm.GetGameVersion() == GV_US10)
+#if 1
+		if(gvm.GetGameVersion() == GV_US10)
 		{
 			inj.Nop(0x469FB0, 0x469FFB - 0x469FB0);
 			inj.ReplaceFunction(ScriptExecutionLoop, 0x469FF6);
 			inj.Nop(0x469FF2, 0x469FFB - 0x469FF2);
 			inj.ReplaceFunction(ScriptExecutionLoop, 0x469FF6);
-		}*/
+		}
+#endif
 	}
 
 	inline CRunningScript& operator>>(CRunningScript& thread, DWORD& uval)
