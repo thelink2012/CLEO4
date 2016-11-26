@@ -1,3 +1,5 @@
+*.VC.db
+*.VC.opendb
 *.asi
 *.dll
 *.pdb
