@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "StdInc.h"
 
 #include "CTextManager.h"
 #include "cleo.h"
@@ -23,7 +22,7 @@ namespace CLEO
 
 	char message_buf[0x80];
 
-	const char * __fastcall CText__TKey__locate(CText::CKeyArray *key, int dummy, const char *gxt, bool& found)
+	const char * __fastcall CText__TKey__locate(CText__TKey *key, int dummy, const char *gxt, bool& found)
 	{
 		const char * result;
 		_asm
@@ -86,13 +85,13 @@ namespace CLEO
 		szResult = GetInstance().TextManager.LocateFxt(gxt);
 		if(szResult) return szResult;
 
-		szResult = CText__TKey__locate(&text->MainKeys, 0, gxt, bFound);
+		szResult = CText__TKey__locate(&text->tkeyMain, 0, gxt, bFound);
 
 		if(!bFound)
 		{
-			if (text->m_bMissionLoaded || *mpackNumber || text->haveTabl)
+			if (text->missionTableLoaded || *mpackNumber || text->haveTabl)
 			{
-				szResult = CText__TKey__locate(&text->MissionKeys, 0, gxt, bFound);
+				szResult = CText__TKey__locate(&text->tkeyMission, 0, gxt, bFound);
 				if (!bFound)	 return "";
 				//else TRACE("Failed to find used text label '%s'", gxt);
 			}

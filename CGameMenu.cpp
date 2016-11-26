@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "StdInc.h"
 #include "CGameMenu.h"
 #include "cleo.h"
 #include "CDebug.h"

@@ -1,6 +1,5 @@
 #pragma once
 #include "stdafx.h"
-#include "StdInc.h"
 #include "CCodeInjector.h"
 #include "crc32.h"
 #include <string>

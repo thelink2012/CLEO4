@@ -3,7 +3,6 @@
 #include "bass\bass.h"
 #include "CDebug.h"
 #include "cleo.h"
-#include "CMenuManager.h"
 #include <windows.h>
 
 namespace CLEO
@@ -187,14 +186,14 @@ namespace CLEO
 			// not in menu
 			// process camera movements
 
-			RwMatrix * pMatrix = nullptr;
-			RwV3D * pVec = nullptr;
-			if(camera->matrix)
+			CMatrixLink * pMatrix = nullptr;
+			CVector * pVec = nullptr;
+			if(camera->m_matrix)
 			{
-				pMatrix = &camera->matrix->matrix;
+				pMatrix = camera->m_matrix;
 				pVec = &pMatrix->pos;
 			}
-			else pVec = &camera->m_transform.m_translate;
+			else pVec = &camera->m_placement.m_vPosn;
 			
 			BASS_Set3DPosition(
 				&BASS_3DVECTOR(pVec->y, pVec->z, pVec->x),
@@ -353,9 +352,9 @@ namespace CLEO
 
 	void C3DAudioStream::Set3dPosition(const CVector& pos)
 	{
-		position.x = pos.fY;
-		position.y = pos.fZ;
-		position.z = pos.fX;
+		position.x = pos.y;
+		position.y = pos.z;
+		position.z = pos.x;
 		link = nullptr;
 		BASS_ChannelSet3DPosition(streamInternal, &position, nullptr, nullptr);
 	}
@@ -386,7 +385,7 @@ namespace CLEO
 		{
 			if (link) 
 			{
-				RwV3D * pVec = link->matrix ? &link->matrix->matrix.pos : &link->m_transform.m_translate;
+				CVector * pVec = link->m_matrix ? &link->m_matrix->pos : &link->m_placement.m_vPosn;
 				BASS_ChannelSet3DPosition(streamInternal, &BASS_3DVECTOR(pVec->y, pVec->z, pVec->x), nullptr, nullptr);
 			}
 			else
