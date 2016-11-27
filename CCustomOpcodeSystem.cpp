@@ -334,17 +334,17 @@ namespace CLEO
 	inline CRunningScript& operator>>(CRunningScript& thread, CVector& vec)
 	{
 		GetScriptParams(&thread, 3);
-		vec.fX = opcodeParams[0].fParam;
-		vec.fY = opcodeParams[1].fParam;
-		vec.fZ = opcodeParams[2].fParam;
+		vec.x = opcodeParams[0].fParam;
+		vec.y = opcodeParams[1].fParam;
+		vec.z = opcodeParams[2].fParam;
 		return thread;
 	}
 	
 	inline CRunningScript& operator<<(CRunningScript& thread, const CVector& vec)
 	{
-		opcodeParams[0].fParam = vec.fX;
-		opcodeParams[1].fParam = vec.fY;
-		opcodeParams[2].fParam = vec.fZ;
+		opcodeParams[0].fParam = vec.x;
+		opcodeParams[1].fParam = vec.y;
+		opcodeParams[2].fParam = vec.z;
 		SetScriptParams(&thread, 3);
 		return thread;
 	}
@@ -1016,7 +1016,7 @@ namespace CLEO
 	{
 		DWORD handle; 
 		*thread >> handle;
-		*thread << GetPedPool().GetAt(handle);
+		*thread << GetPedPool().AtHandle(handle);
 		return OR_CONTINUE;
 	}
 
@@ -1025,7 +1025,7 @@ namespace CLEO
 	{
 		DWORD handle; 
 		*thread >> handle;
-		*thread << GetVehiclePool().GetAt(handle);
+		*thread << GetVehiclePool().AtHandle(handle);
 		return OR_CONTINUE;
 	}
 
@@ -1034,7 +1034,7 @@ namespace CLEO
 	{
 		DWORD handle; 
 		*thread >> handle;
-		*thread << GetObjectPool().GetAt(handle);
+		*thread << GetObjectPool().AtHandle(handle);
 		return OR_CONTINUE;
 	}
 
@@ -1643,15 +1643,15 @@ loop_end_0AA8:
 	{
 		DWORD actor;
 		*thread >> actor;
-		auto pPlayerPed = GetPedPool().GetAt(actor);
+		auto pPlayerPed = GetPedPool().AtHandle(actor);
 		CPedIntelligence * pedintel;
-		if(pPlayerPed && (pedintel = pPlayerPed->GetPedIntelligence()))
+		if(pPlayerPed && (pedintel = pPlayerPed->m_pIntelligence))
 		{
 			CVehicle * pVehicle = nullptr;
 			for(int i=0; i<NUM_SCAN_ENTITIES; i++)
 			{
-				pVehicle = pedintel->m_VehicleScanner.m_pEntities[i];
-				if(pVehicle && pVehicle->GetOwner() != 2 && !pVehicle->m_nVehicleFlags.bFadeOut)
+				pVehicle = (CVehicle*) pedintel->m_vehicleScanner.m_apEntities[i];
+				if(pVehicle && pVehicle->m_nCreatedBy != 2 && !pVehicle->m_nFlags.bFadeOut)
 					break;
 				pVehicle = nullptr;
 			}
@@ -1659,8 +1659,8 @@ loop_end_0AA8:
 			CPed * pPed = nullptr;
 			for(int i=0; i<NUM_SCAN_ENTITIES; i++)
 			{
-				pPed = pedintel->m_PedScanner.m_pEntities[i];
-				if(pPed && pPed != pPlayerPed && pPed->GetOwner() == 1 && !pPed->GetPedFlags().bFadeOut)
+				pPed = (CPed*) pedintel->m_pedScanner.m_apEntities[i];
+				if(pPed && pPed != pPlayerPed && (pPed->m_dwUsageType & 0xFF) == 1 && !pPed->m_nPedFlags.bFadeOut)
 					break;
 				pPed = nullptr;
 			}
@@ -1676,12 +1676,12 @@ loop_end_0AA8:
 	{
 		// steam offset is different, so get it manually for now
 		CGameVersionManager& gvm = GetInstance().VersionManager;
-		DWORD hMarker = gvm.GetGameVersion() != GV_STEAM ? MenuManager->GetWaypointHandle() : *((DWORD*)0xC3312C);
+		DWORD hMarker = gvm.GetGameVersion() != GV_STEAM ? MenuManager->m_nTargetBlipIndex : *((DWORD*)0xC3312C);
 		CMarker *pMarker;
 		if(hMarker && (pMarker = &RadarBlips[LOWORD(hMarker)]) && /*pMarker->m_nPoolIndex == HIWORD(hMarker) && */pMarker->m_nBlipDisplayFlag)
 		{
-			CVector coords(pMarker->m_vCoords);
-			coords.fZ = FindGroundZ(coords.fX, coords.fY);
+			CVector coords(pMarker->m_vPosition);
+			coords.z = FindGroundZ(coords.x, coords.y);
 			*thread << coords;
 			SetScriptCondResult(thread, true);
 		}
@@ -1699,8 +1699,8 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		auto id = reinterpret_cast<CVehicleModelInfo*>(Models[GetVehiclePool().GetAt(hVehicle)->GetModelIndex() - 400])->vehicleHandlingID;
-		*thread << Handling->Automobile[id].m_Transmission.ucNumberOfGears;
+		auto id = reinterpret_cast<CVehicleModelInfo*>(Models[GetVehiclePool().AtHandle(hVehicle)->m_wModelIndex - 400])->m_wHandlingIndex;
+		*thread << Handling->m_aVehicleHandling[id].m_transmissionData.m_nNumberOfGears;
 		return OR_CONTINUE;
 	}
 
@@ -1709,7 +1709,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		*thread << GetVehiclePool().GetAt(hVehicle)->m_nCurrentGear;
+		*thread << GetVehiclePool().AtHandle(hVehicle)->m_nCurrentGear;
 		return OR_CONTINUE;
 	}
 		
@@ -1759,7 +1759,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		SetScriptCondResult(thread, GetVehiclePool().GetAt(hVehicle)->m_nVehicleFlags.bSirenOrAlarm);
+		SetScriptCondResult(thread, GetVehiclePool().AtHandle(hVehicle)->m_nFlags.bSirenOrAlarm);
 		return OR_CONTINUE;
 	}
 
@@ -1768,7 +1768,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		SetScriptCondResult(thread, GetVehiclePool().GetAt(hVehicle)->m_nVehicleFlags.bEngineOn);
+		SetScriptCondResult(thread, GetVehiclePool().AtHandle(hVehicle)->m_nFlags.bEngineOn);
 		return OR_CONTINUE;
 	}
 
@@ -1778,8 +1778,8 @@ loop_end_0AA8:
 		DWORD	hVehicle,
 				state;
 		*thread >> hVehicle >> state;
-		auto veh = GetVehiclePool().GetAt(hVehicle);
-		veh->m_nVehicleFlags.bEngineOn = state != false;
+		auto veh = GetVehiclePool().AtHandle(hVehicle);
+		veh->m_nFlags.bEngineOn = state != false;
 		return OR_CONTINUE;
 	}
 
@@ -1818,7 +1818,7 @@ loop_end_0AA8:
 		CAudioStream *stream;
 		DWORD handle;
 		*thread >> stream >> handle;
-		if(stream) stream->Link(GetObjectPool().GetAt(handle));
+		if(stream) stream->Link(GetObjectPool().AtHandle(handle));
 		return OR_CONTINUE;
 	}
 
@@ -1828,7 +1828,7 @@ loop_end_0AA8:
 		CAudioStream *stream;
 		DWORD handle;
 		*thread >> stream >> handle;
-		if(stream) stream->Link(GetPedPool().GetAt(handle));
+		if(stream) stream->Link(GetPedPool().AtHandle(handle));
 		return OR_CONTINUE;
 	}
 
@@ -1838,7 +1838,7 @@ loop_end_0AA8:
 		CAudioStream *stream;
 		DWORD handle;
 		*thread >> stream >> handle;
-		if(stream) stream->Link(GetVehiclePool().GetAt(handle));
+		if(stream) stream->Link(GetVehiclePool().AtHandle(handle));
 		return OR_CONTINUE;
 	}
 
@@ -1979,9 +1979,9 @@ loop_end_0AA8:
 		DWORD playerId;
 		*thread >> playerId;
 		auto pPlayerPed = GetPlayerPed(playerId);
-		auto pTargetEntity = pPlayerPed->GetWeaponTarget();
-		if(!pTargetEntity) pTargetEntity = pPlayerPed->GetManualWeaponTarget();
-		if(pTargetEntity && pTargetEntity->IsPed())
+		auto pTargetEntity = GetWeaponTarget(pPlayerPed);
+		if(!pTargetEntity) pTargetEntity = (CEntity*) pPlayerPed->m_pPlayerTargettedPed;
+		if(pTargetEntity && pTargetEntity->m_nType == ENTITY_TYPE_PED)
 		{
 			*thread << GetPedPool().GetIndex(reinterpret_cast<CPed*>(pTargetEntity));
 			SetScriptCondResult(thread, true);
@@ -2149,7 +2149,7 @@ loop_end_0AA8:
 		auto model = reinterpret_cast<CVehicleModelInfo*>(Models[mi]);
 		if (*thread->GetBytePointer() >= 1 && *thread->GetBytePointer() <= 8) *thread >> buf;
 		else buf = (char *)GetScriptParamPointer(thread);
-		memcpy(buf, model->Name, 8);
+		memcpy(buf, model->m_szGameName, 8);
 		return OR_CONTINUE;
 	}
 	
@@ -2166,7 +2166,7 @@ loop_end_0AA8:
 		DWORD mi;
 		*thread >> mi;
 		auto model = reinterpret_cast<CVehicleModelInfo*>(Models[mi]);
-		if(model->VehicleType != VEHICLE_TYPE_TRAIN && model->VehicleType != VEHICLE_TYPE_UNKNOWN) SpawnCar(mi);
+		if(model->m_dwType != VEHICLE_TYPE_TRAIN && model->m_dwType != VEHICLE_TYPE_UNKNOWN) SpawnCar(mi);
 		return OR_CONTINUE;
 	}
 
@@ -2207,7 +2207,7 @@ loop_end_0AA8:
 		float radius;
 		DWORD next, pass_deads;
 		static DWORD stat_last_found = 0;
-		auto pool = GetPedPool();
+		auto& pool = GetPedPool();
 		*thread >> center >> radius >> next >> pass_deads;
 		
 		DWORD& last_found =	reinterpret_cast<CCustomScript *>(thread)->IsCustom() ?
@@ -2216,16 +2216,14 @@ loop_end_0AA8:
 		
 		if (!next) last_found = 0;
 
-		for(int index = last_found; index < pool.GetSize(); ++index)
+		for(int index = last_found; index < pool.m_Size; ++index)
 		{
-			if(!pool.IsValid(index)) continue;
-			
-			if(auto obj = pool.Get(index))
+			if(auto obj = pool.GetAt(index))
 			{
-				if(obj->IsPlayer() || (pass_deads && !obj->IsAvailable())/* || obj->GetOwner() == 2*/ || obj->PedFlags.bFadeOut)
+				if(obj->IsPlayer() || (pass_deads && !IsAvailable(obj))/* || obj->GetOwner() == 2*/ || obj->m_nPedFlags.bFadeOut)
 					continue;
 				
-				if((obj->GetPos() - center).Length() <= radius)
+				if((obj->GetPosition() - center).Magnitude() <= radius)
 				{
 					last_found = index + 1;	// on next opcode call start search from next index
 					//if(last_found >= (unsigned)pool.GetSize()) last_found = 0;
@@ -2252,7 +2250,7 @@ loop_end_0AA8:
 		DWORD next, pass_wrecked;
 		static DWORD stat_last_found = 0;
 		
-		auto pool = GetVehiclePool();
+		auto& pool = GetVehiclePool();
 		*thread >> center >> radius >> next >> pass_wrecked;
 
 		DWORD& last_found =	reinterpret_cast<CCustomScript*>(thread)->IsCustom() ?
@@ -2261,16 +2259,14 @@ loop_end_0AA8:
 		
 		if (!next) last_found = 0;
 
-		for (int index = last_found; index < pool.GetSize(); ++index)
+		for (int index = last_found; index < pool.m_Size; ++index)
 		{
-			if (!pool.IsValid(index)) continue;
-
-			if(auto obj = pool.Get(index))
+			if(auto obj = pool.GetAt(index))
 			{
-				if((pass_wrecked && obj->IsWrecked()) || (/*obj->GetOwner() == 2 ||*/ obj->m_nVehicleFlags.bFadeOut))
+				if((pass_wrecked && IsWrecked(obj)) || (/*obj->GetOwner() == 2 ||*/ obj->m_nFlags.bFadeOut))
 					continue;
 
-				if((obj->GetPos() - center).Length() <= radius)
+				if((obj->GetPosition() - center).Magnitude() <= radius)
 				{
 					last_found = index + 1;	// on next opcode call start search from next index
 					//if(last_found >= (unsigned)pool.GetSize()) last_found = 0;
@@ -2295,7 +2291,7 @@ loop_end_0AA8:
 		float radius;
 		DWORD next;
 		static DWORD stat_last_found = 0;
-		auto pool = GetObjectPool();
+		auto& pool = GetObjectPool();
 		*thread >> center >> radius >> next;
 		
 		auto cs = reinterpret_cast<CCustomScript *>(thread);
@@ -2303,15 +2299,13 @@ loop_end_0AA8:
 		
 		if(!next) last_found = 0;
 
-		for(int index = last_found; index < pool.GetSize(); ++index)
+		for(int index = last_found; index < pool.m_Size; ++index)
 		{
-			if (!pool.IsValid(index)) continue;	// empty slot
-
-			if(auto obj = pool.Get(index))
+			if(auto obj = pool.GetAt(index))
 			{
-				if(obj->GetFlags().bFadeOut) continue;
+                if(obj->m_nObjectFlags.bFadingIn) continue; // this is actually .bFadingOut
 
-				if((obj->GetPos() - center).Length() <= radius)
+				if((obj->GetPosition() - center).Magnitude() <= radius)
 				{
 					last_found = index + 1;	// on next opcode call start search from next index
 					//if(last_found >= (unsigned)pool.GetSize()) last_found = 0;
