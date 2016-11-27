@@ -16,6 +16,7 @@
 #include <direct.h>
 #include <list>
 #include <vector>
+#include <map>
 #include <set>
 #include <cstdint>
 

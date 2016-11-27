@@ -1,4 +1,5 @@
 #pragma once
+#include "stdafx.h"
 #include "CCodeInjector.h"
 #include "CCustomOpcodeSystem.h"
 
@@ -62,7 +63,27 @@ namespace CLEO
 
 	class CScriptEngine : VInjectible
 	{
+    public:
+        struct PluginData
+        {
+            struct Params
+            {
+                void*   m_pUserParam;
+                uint8_t m_bIsFromSaveStorage;
+            };
+
+            void(*m_pConstructor)(CRunningScript*, void*, const Params*);
+            void(*m_pDestructor)(CRunningScript*, void*, const Params*);
+            void*    m_pUserParam;
+            uint32_t m_uFourCC;
+            uint32_t m_uDataSize;
+            uint32_t m_uDataOffset;
+        };
+
+    private:
 		friend class CCustomScript;
+        std::vector<PluginData> PluginsData;
+        std::map<CRunningScript*, std::unique_ptr<uint8_t[]>> PluginDataInstance;
 		std::list<CCustomScript *> CustomScripts;
 		std::list<CCustomScript *> ScriptsWaitingForDelete;
 		std::set<unsigned long> InactiveScriptHashes;
@@ -85,9 +106,16 @@ namespace CLEO
 		inline size_t				WorkingScriptsCount()						{return CustomScripts.size();}
 		virtual void					Inject(CCodeInjector&);
 		
+        int RegisterPluginData(PluginData data);
+        void OnScriptStart(CRunningScript*);
+        void OnScriptTerminate(CRunningScript*);
+        void* FindScriptData(CRunningScript*, int);
+        void RegisterCleoPlugin();
+
 		CScriptEngine()
 		{
 			CustomMission = nullptr;
+            RegisterCleoPlugin();
 		}
 		
 		~CScriptEngine()
@@ -98,6 +126,37 @@ namespace CLEO
 
 		void DrawScriptStuff(char bBeforeFade);
 	};
+
+
+    struct CleoScriptData
+    {
+        static const uint32_t ms_Identifier = 0x4F454C43; // 'CLEO'
+
+        static void StaticConstructor(CRunningScript*, void* pData, const CScriptEngine::PluginData::Params*)
+        {
+            new (pData) CleoScriptData();
+        }
+
+        static void StaticDestructor(CRunningScript*, void* pData, const CScriptEngine::PluginData::Params*)
+        {
+            reinterpret_cast<CleoScriptData*>(pData)->~CleoScriptData();
+        }
+    };
+
+    inline void CScriptEngine::RegisterCleoPlugin()
+    {
+        this->RegisterPluginData(PluginData{
+            CleoScriptData::StaticConstructor,
+            CleoScriptData::StaticDestructor,
+            nullptr, CleoScriptData::ms_Identifier,
+            sizeof(CleoScriptData), 0
+        });
+    }
+
+    inline bool IsCustom(const CRunningScript* script)
+    {
+        return MemRead<bool>(reinterpret_cast<const BYTE*>(script)+0xDF);
+    }
 
 	extern void			(__thiscall * AddScriptToQueue)(CRunningScript *, CRunningScript **queue);
 	extern void			(__thiscall * RemoveScriptFromQueue)(CRunningScript *, CRunningScript **queue);

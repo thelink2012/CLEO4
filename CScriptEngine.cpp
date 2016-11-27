@@ -168,6 +168,43 @@ namespace CLEO
 
 	CRunningScript **inactiveThreadQueue, **activeThreadQueue;
 
+    static void* ASM_OnScriptRemoveFromQueue_ret;
+    static void OnScriptRemoveFromQueue(CRunningScript* pRemovedScript, CRunningScript** pQueue);
+
+    static void __declspec(naked) ASM_OnScriptRemoveFromQueue()
+    {
+        _asm
+        {
+            /*
+            * ecx     = pRemovedScript
+            * [esp+4] = pQueue
+            */
+
+            mov eax, [esp + 4]    // pQueue
+            pushad
+            push eax            // pQueue
+            push ecx            // pRemovedScript
+            call OnScriptRemoveFromQueue
+            add esp, 8
+            popad
+
+            // Default code
+            mov  eax, [ecx + 0x4]
+            test eax, eax
+
+            jmp ASM_OnScriptRemoveFromQueue_ret
+        }
+    }
+
+    static void OnScriptRemoveFromQueue(CRunningScript* pRemovedScript, CRunningScript** pQueue)
+    {
+        if(pQueue == activeThreadQueue)
+        {
+            if(IsCustom(pRemovedScript)) // TODO for all script types
+                GetInstance().ScriptEngine.OnScriptTerminate(pRemovedScript);
+        }
+    }
+
 	// called to initialise the scripts (after the main.scm has actually had a chance to set up)
 	void OnInitScm1(void)
 	{
@@ -671,6 +708,14 @@ namespace CLEO
 		inj.ReplaceFunction(OnLoadScmData, gvm.TranslateMemoryAddress(MA_CALL_LOAD_SCM_DATA));
 		inj.ReplaceFunction(OnSaveScmData, gvm.TranslateMemoryAddress(MA_CALL_SAVE_SCM_DATA));
 		inj.InjectFunction(&opcode_004E_hook, gvm.TranslateMemoryAddress(MA_OPCODE_004E));
+
+        // TODO use gvm
+        ASM_OnScriptRemoveFromQueue_ret = (void*)(FUNC_RemoveScriptFromQueue+5);
+        if(MemRead<uint8_t>(FUNC_RemoveScriptFromQueue) == OP_JMP)
+        {
+            ASM_OnScriptRemoveFromQueue_ret = MemReadOffsetPtr<void*>(FUNC_RemoveScriptFromQueue+1);
+        }
+        inj.InjectFunction(ASM_OnScriptRemoveFromQueue, FUNC_RemoveScriptFromQueue /*0x464BD0*/);
 	}
 
 	CleoSafeHeader safe_header;
@@ -883,6 +928,7 @@ namespace CLEO
 		}
 		AddScriptToQueue(cs, activeThreadQueue);
 		cs->SetActive(true);
+        GetInstance().ScriptEngine.OnScriptStart(cs);
 	}
 
 	void CScriptEngine::RemoveCustomScript(CCustomScript *cs)
@@ -952,7 +998,7 @@ namespace CLEO
 		}
 	}
 
-	void CScriptEngine::UnregisterAllScripts()
+	void CScriptEngine::UnregisterAllScripts() //BeforeSave
 	{
 		TRACE("Unregistering all custom scripts");
 		std::for_each(CustomScripts.begin(), CustomScripts.end(), [this](CCustomScript *cs){
@@ -961,7 +1007,7 @@ namespace CLEO
 		});
 	}
 
-	void CScriptEngine::ReregisterAllScripts()
+	void CScriptEngine::ReregisterAllScripts() //AfterSave
 	{
 		TRACE("Reregistering all custom scripts");
 		std::for_each(CustomScripts.begin(), CustomScripts.end(), [this](CCustomScript *cs){
@@ -1024,4 +1070,103 @@ namespace CLEO
 	{
 		if (BaseIP && !bIsMission) delete[] BaseIP;
 	}
+
+    int CScriptEngine::RegisterPluginData(PluginData data)
+    {
+        // Ensure data size is 8-byte aligned (std::max_align_t)
+        if((data.m_uDataSize % 8) != 0)
+        {
+            data.m_uDataSize += 8 - (data.m_uDataSize % 8);
+        }
+
+        if(this->PluginsData.size())
+        {
+            auto& prev = PluginsData.back();
+            data.m_uDataOffset = prev.m_uDataOffset + prev.m_uDataSize;
+        }
+        else
+        {
+            data.m_uDataOffset = 0;
+        }
+
+        this->PluginsData.emplace_back(std::move(data));
+        return (int)(this->PluginsData.size() - 1);
+    }
+
+    void* CScriptEngine::FindScriptData(CRunningScript* pScript, int id)
+    {
+        assert(id >= 0);
+        uint8_t* data = nullptr;
+
+        if(IsCustom(pScript))
+        {
+            // TODO can be quicker by storing it in the CCustomScript structure
+        }
+
+        if(!data)
+        {
+            auto it = PluginDataInstance.find(pScript);
+            if(it != PluginDataInstance.end()) data = it->second.get();
+        }
+
+        return (void*)(data? &data[PluginsData[id].m_uDataOffset] : nullptr);
+    }
+
+    void CScriptEngine::OnScriptStart(CRunningScript* pScript)
+    {
+        assert(PluginDataInstance.find(pScript) == PluginDataInstance.end());
+
+        size_t size = 0;
+        if(PluginsData.size())
+        {
+            auto& last = PluginsData.back();
+            size = last.m_uDataOffset + last.m_uDataSize;
+        }
+
+        std::unique_ptr<uint8_t[]> pAlloc(size? new uint8_t[size] : nullptr);
+
+        uint8_t* data = pAlloc.get();
+        for(auto& plugin : this->PluginsData)
+        {
+            PluginData::Params params{ plugin.m_pUserParam, false };
+            if(plugin.m_pConstructor) plugin.m_pConstructor(pScript, (void*)(data), &params);
+            data += plugin.m_uDataSize;
+        }
+
+        this->PluginDataInstance.emplace(pScript, std::move(pAlloc));
+    }
+
+    void CScriptEngine::OnScriptTerminate(CRunningScript* pScript)
+    {
+        auto inst = PluginDataInstance.find(pScript);
+        assert(inst != PluginDataInstance.end());
+        assert(inst->first == pScript);
+
+        uint8_t* data = inst->second.get();
+        for(auto& plugin : this->PluginsData)
+        {
+            PluginData::Params params{ plugin.m_pUserParam, false };
+            if(plugin.m_pDestructor) plugin.m_pDestructor(pScript, (void*)(data), &params);
+            data += plugin.m_uDataSize;
+        }
+
+        this->PluginDataInstance.erase(inst);
+    }
+}
+
+extern "C"
+{
+    using namespace CLEO;
+
+    int WINAPI CLEO_RegisterScriptData(uint32_t fourcc, size_t size, void* param,
+                                       void(*ctor)(CRunningScript*, void*, const CScriptEngine::PluginData::Params*),
+                                       void(*dtor)(CRunningScript*, void*, const CScriptEngine::PluginData::Params*))
+    {
+        return GetInstance().ScriptEngine.RegisterPluginData(CScriptEngine::PluginData { ctor, dtor, param, fourcc, size, 0 });
+    }
+
+    void* WINAPI CLEO_FindScriptData(CRunningScript* script, int id)
+    {
+        return GetInstance().ScriptEngine.FindScriptData(script, id);
+    }
 }
