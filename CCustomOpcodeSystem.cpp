@@ -1016,7 +1016,7 @@ namespace CLEO
 	{
 		DWORD handle; 
 		*thread >> handle;
-		*thread << GetPedPool().GetAt(handle);
+		*thread << GetPedPool().AtHandle(handle);
 		return OR_CONTINUE;
 	}
 
@@ -1025,7 +1025,7 @@ namespace CLEO
 	{
 		DWORD handle; 
 		*thread >> handle;
-		*thread << GetVehiclePool().GetAt(handle);
+		*thread << GetVehiclePool().AtHandle(handle);
 		return OR_CONTINUE;
 	}
 
@@ -1034,7 +1034,7 @@ namespace CLEO
 	{
 		DWORD handle; 
 		*thread >> handle;
-		*thread << GetObjectPool().GetAt(handle);
+		*thread << GetObjectPool().AtHandle(handle);
 		return OR_CONTINUE;
 	}
 
@@ -1643,7 +1643,7 @@ loop_end_0AA8:
 	{
 		DWORD actor;
 		*thread >> actor;
-		auto pPlayerPed = GetPedPool().GetAt(actor);
+		auto pPlayerPed = GetPedPool().AtHandle(actor);
 		CPedIntelligence * pedintel;
 		if(pPlayerPed && (pedintel = pPlayerPed->m_pIntelligence))
 		{
@@ -1699,7 +1699,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		auto id = reinterpret_cast<CVehicleModelInfo*>(Models[GetVehiclePool().GetAt(hVehicle)->m_wModelIndex - 400])->m_wHandlingIndex;
+		auto id = reinterpret_cast<CVehicleModelInfo*>(Models[GetVehiclePool().AtHandle(hVehicle)->m_wModelIndex - 400])->m_wHandlingIndex;
 		*thread << Handling->m_aVehicleHandling[id].m_transmissionData.m_nNumberOfGears;
 		return OR_CONTINUE;
 	}
@@ -1709,7 +1709,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		*thread << GetVehiclePool().GetAt(hVehicle)->m_nCurrentGear;
+		*thread << GetVehiclePool().AtHandle(hVehicle)->m_nCurrentGear;
 		return OR_CONTINUE;
 	}
 		
@@ -1759,7 +1759,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		SetScriptCondResult(thread, GetVehiclePool().GetAt(hVehicle)->m_nFlags.bSirenOrAlarm);
+		SetScriptCondResult(thread, GetVehiclePool().AtHandle(hVehicle)->m_nFlags.bSirenOrAlarm);
 		return OR_CONTINUE;
 	}
 
@@ -1768,7 +1768,7 @@ loop_end_0AA8:
 	{
 		DWORD hVehicle;
 		*thread >> hVehicle;
-		SetScriptCondResult(thread, GetVehiclePool().GetAt(hVehicle)->m_nFlags.bEngineOn);
+		SetScriptCondResult(thread, GetVehiclePool().AtHandle(hVehicle)->m_nFlags.bEngineOn);
 		return OR_CONTINUE;
 	}
 
@@ -1778,7 +1778,7 @@ loop_end_0AA8:
 		DWORD	hVehicle,
 				state;
 		*thread >> hVehicle >> state;
-		auto veh = GetVehiclePool().GetAt(hVehicle);
+		auto veh = GetVehiclePool().AtHandle(hVehicle);
 		veh->m_nFlags.bEngineOn = state != false;
 		return OR_CONTINUE;
 	}
@@ -1818,7 +1818,7 @@ loop_end_0AA8:
 		CAudioStream *stream;
 		DWORD handle;
 		*thread >> stream >> handle;
-		if(stream) stream->Link(GetObjectPool().GetAt(handle));
+		if(stream) stream->Link(GetObjectPool().AtHandle(handle));
 		return OR_CONTINUE;
 	}
 
@@ -1828,7 +1828,7 @@ loop_end_0AA8:
 		CAudioStream *stream;
 		DWORD handle;
 		*thread >> stream >> handle;
-		if(stream) stream->Link(GetPedPool().GetAt(handle));
+		if(stream) stream->Link(GetPedPool().AtHandle(handle));
 		return OR_CONTINUE;
 	}
 
@@ -1838,7 +1838,7 @@ loop_end_0AA8:
 		CAudioStream *stream;
 		DWORD handle;
 		*thread >> stream >> handle;
-		if(stream) stream->Link(GetVehiclePool().GetAt(handle));
+		if(stream) stream->Link(GetVehiclePool().AtHandle(handle));
 		return OR_CONTINUE;
 	}
 
@@ -2207,7 +2207,7 @@ loop_end_0AA8:
 		float radius;
 		DWORD next, pass_deads;
 		static DWORD stat_last_found = 0;
-		auto pool = GetPedPool();
+		auto& pool = GetPedPool();
 		*thread >> center >> radius >> next >> pass_deads;
 		
 		DWORD& last_found =	reinterpret_cast<CCustomScript *>(thread)->IsCustom() ?
@@ -2250,7 +2250,7 @@ loop_end_0AA8:
 		DWORD next, pass_wrecked;
 		static DWORD stat_last_found = 0;
 		
-		auto pool = GetVehiclePool();
+		auto& pool = GetVehiclePool();
 		*thread >> center >> radius >> next >> pass_wrecked;
 
 		DWORD& last_found =	reinterpret_cast<CCustomScript*>(thread)->IsCustom() ?
@@ -2291,7 +2291,7 @@ loop_end_0AA8:
 		float radius;
 		DWORD next;
 		static DWORD stat_last_found = 0;
-		auto pool = GetObjectPool();
+		auto& pool = GetObjectPool();
 		*thread >> center >> radius >> next;
 		
 		auto cs = reinterpret_cast<CCustomScript *>(thread);
@@ -2303,7 +2303,7 @@ loop_end_0AA8:
 		{
 			if(auto obj = pool.GetAt(index))
 			{
-				//if(obj->m_nObjectFlags.bFadeOut) continue; -- ??? this flag doesn't exist?
+                if(obj->m_nObjectFlags.bFadingIn) continue; // this is actually .bFadingOut
 
 				if((obj->GetPosition() - center).Magnitude() <= radius)
 				{
